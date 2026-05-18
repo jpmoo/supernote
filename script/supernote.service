@@ -1,0 +1,18 @@
+[Unit]
+Description=Supernote Knowledge Hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jpmoo
+WorkingDirectory=/home/jpmoo/supernote
+EnvironmentFile=/home/jpmoo/supernote/.env
+ExecStart=/home/jpmoo/supernote/.venv/bin/supernote serve
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
