@@ -595,6 +595,7 @@ class SupernoteXParser(SupernoteParser):
         "SN_FILE_VER_20220013",  # Firmware version Chauvet 2.6.19
         "SN_FILE_VER_20230014",  # Firmware version Chauvet 2.10.25
         "SN_FILE_VER_20230015",  # Firmware version Chauvet 3.14.27
+        "SN_FILE_VER_20260016",  # Firmware version 3.25+ (Private Cloud release)
     ]
     LAYER_KEYS = ["MAINLAYER", "LAYER1", "LAYER2", "LAYER3", "BGLAYER"]
 

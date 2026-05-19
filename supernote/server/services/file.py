@@ -903,7 +903,7 @@ class FileService:
                     )
                 ]
             )
-            note = load_notebook(BytesIO(blob_content))  # type: ignore[arg-type]
+            note = load_notebook(BytesIO(blob_content), policy="loose")  # type: ignore[arg-type]
 
             # Convert each page to PNG
             converter = ImageConverter(note)  # type: ignore[no-untyped-call]
@@ -951,7 +951,7 @@ class FileService:
                     )
                 ]
             )
-            note = load_notebook(BytesIO(blob_content))  # type: ignore[arg-type]
+            note = load_notebook(BytesIO(blob_content), policy="loose")  # type: ignore[arg-type]
 
             # 2. Convert to PDF
             converter = PdfConverter(note)
