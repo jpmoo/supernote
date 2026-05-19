@@ -181,7 +181,7 @@ export async function getFileDownloadUrl(fileId) {
             'Content-Type': 'application/json',
             'x-access-token': currentToken
         },
-        body: JSON.stringify({ id: fileId })
+        body: JSON.stringify({ id: fileId, equipmentNo: "web" })
     });
 
     if (!response.ok) {
