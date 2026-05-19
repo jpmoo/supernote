@@ -167,6 +167,36 @@ export async function convertNoteToPng(fileId) {
 }
 
 /**
+ * Get a signed download URL for an arbitrary file (PNG, PDF, etc.)
+ * @param {string} fileId
+ * @returns {Promise<string>} signed download URL
+ */
+export async function getFileDownloadUrl(fileId) {
+    const currentToken = getToken();
+    if (!currentToken) throw new Error("Unauthorized");
+
+    const response = await fetch('/api/file/3/files/download_v3', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-access-token': currentToken
+        },
+        body: JSON.stringify({ id: fileId })
+    });
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            logout();
+            throw new Error("Unauthorized");
+        }
+        throw new Error(`Download request failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.url;
+}
+
+/**
  * Fetch summaries for a file
  * @param {string} fileId
  * @returns {Promise<Array<Object>>}

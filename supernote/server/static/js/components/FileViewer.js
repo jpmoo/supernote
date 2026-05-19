@@ -1,6 +1,15 @@
 import { ref, watch, onMounted } from 'vue';
-import { convertNoteToPng } from '../api/client.js';
+import { convertNoteToPng, getFileDownloadUrl } from '../api/client.js';
 import SummaryPanel from './SummaryPanel.js';
+
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+const PDF_EXTS = ['pdf'];
+
+function getExt(name) {
+    if (!name) return '';
+    const i = name.lastIndexOf('.');
+    return i >= 0 ? name.slice(i + 1).toLowerCase() : '';
+}
 
 export default {
     components: {
@@ -18,32 +27,40 @@ export default {
         const isLoading = ref(false);
         const error = ref(null);
         const showDetails = ref(false);
+        const directUrl = ref(null);     // for images / PDFs
+        const directKind = ref(null);    // 'image' | 'pdf'
 
         const loadPages = async () => {
             if (!props.file) return;
 
-            // Only convert .note files. For others, just show placeholder for now.
-            // In a real app, we'd handle PDF/PNG native viewing here too.
-            // But our goal is .note conversion.
-            if (!props.file.name.endsWith('.note')) {
-                error.value = "Preview not available for this file type.";
-                return;
-            }
-
             isLoading.value = true;
             error.value = null;
             pages.value = [];
+            directUrl.value = null;
+            directKind.value = null;
+
+            const ext = getExt(props.file.name);
 
             try {
-                const result = await convertNoteToPng(props.file.id);
-                if (result && result.length > 0) {
-                    pages.value = result.sort((a, b) => a.pageNo - b.pageNo);
+                if (ext === 'note') {
+                    const result = await convertNoteToPng(props.file.id);
+                    if (result && result.length > 0) {
+                        pages.value = result.sort((a, b) => a.pageNo - b.pageNo);
+                    } else {
+                        error.value = "No pages found. The note might still be processing.";
+                    }
+                } else if (IMAGE_EXTS.includes(ext)) {
+                    directUrl.value = await getFileDownloadUrl(props.file.id);
+                    directKind.value = 'image';
+                } else if (PDF_EXTS.includes(ext)) {
+                    directUrl.value = await getFileDownloadUrl(props.file.id);
+                    directKind.value = 'pdf';
                 } else {
-                    error.value = "No pages found. The note might still be processing.";
+                    error.value = "Preview not available for this file type.";
                 }
             } catch (e) {
                 console.error(e);
-                error.value = "Failed to load note preview.";
+                error.value = "Failed to load preview.";
             } finally {
                 isLoading.value = false;
             }
@@ -56,7 +73,9 @@ export default {
             pages,
             isLoading,
             error,
-            showDetails
+            showDetails,
+            directUrl,
+            directKind
         };
     },
     template: `
@@ -106,7 +125,7 @@ export default {
                         <p class="text-slate-500 animate-pulse">Converting note...</p>
                     </div>
 
-                    <!-- Pages List -->
+                    <!-- Pages List (for .note files) -->
                     <div v-if="!isLoading && !error && pages.length > 0" class="space-y-6">
                         <div v-for="page in pages" :key="page.pageNo" class="bg-white rounded-xl shadow-md overflow-hidden transition-transform hover:scale-[1.005] duration-300">
                             <div class="border-b border-slate-100 p-3 bg-slate-50 flex justify-between items-center text-xs text-slate-400 font-mono">
@@ -114,6 +133,16 @@ export default {
                             </div>
                             <img :src="page.url" loading="lazy" class="w-full h-auto block" alt="Note Page" />
                         </div>
+                    </div>
+
+                    <!-- Direct image preview -->
+                    <div v-if="!isLoading && !error && directKind === 'image'" class="bg-white rounded-xl shadow-md overflow-hidden">
+                        <img :src="directUrl" class="w-full h-auto block" :alt="file.name" />
+                    </div>
+
+                    <!-- Direct PDF preview -->
+                    <div v-if="!isLoading && !error && directKind === 'pdf'" class="bg-white rounded-xl shadow-md overflow-hidden" style="height: 80vh;">
+                        <iframe :src="directUrl" class="w-full h-full border-0" :title="file.name"></iframe>
                     </div>
                 </div>
             </div>
