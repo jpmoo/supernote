@@ -1,4 +1,4 @@
-import { fetchFiles } from '../api/client.js?v=4';
+import { fetchFiles } from '../api/client.js?v=5';
 
 export default {
     name: 'MoveModal',
