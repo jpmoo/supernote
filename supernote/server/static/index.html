@@ -164,8 +164,8 @@
 
                 <!-- Modals -->
                 <move-modal v-if="showMoveModal" :item-ids="selectedIds"
-                    :initial-directory-id="currentDirectoryId" @close="showMoveModal = false"
-                    @confirm="onConfirmMove"></move-modal>
+                    :initial-directory-id="currentDirectoryId" :initial-breadcrumbs="breadcrumbs"
+                    @close="showMoveModal = false" @confirm="onConfirmMove"></move-modal>
 
                 <rename-modal v-if="showRenameModal" :item="itemToRename" @close="showRenameModal = false"
                     @confirm="onConfirmRename"></rename-modal>
@@ -181,7 +181,7 @@
         </main>
     </div>
     <!-- Load Main Module -->
-    <script type="module" src="/static/js/main.js"></script>
+    <script type="module" src="/static/js/main.js?v=4"></script>
 </body>
 
 </html>

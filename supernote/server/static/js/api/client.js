@@ -119,7 +119,7 @@ export async function fetchFiles(directoryId = "0", pageNo = 1, pageSize = 50) {
 
     // Map backend VO to frontend interface
     return (data.userFileVOList || []).map(file => ({
-        id: file.id,
+        id: String(file.id),
         name: file.fileName,
         isDirectory: file.isFolder === "Y" || file.isFolder === true || file.isFolder === 1,
         size: file.size,
@@ -282,72 +282,6 @@ export async function fetchCapacity() {
     }
 
     return await response.json();
-}
-
-/**
- * List folders under a directory (for move/copy destination picker).
- * @param {string} directoryId Parent directory id ("0" for cloud root).
- * @param {string[]} excludeIdList Folder ids to omit (e.g. items being moved).
- */
-export async function fetchFolderList(directoryId = "0", excludeIdList = []) {
-    const currentToken = getToken();
-    if (!currentToken) throw new Error("Unauthorized");
-
-    const response = await fetch('/api/file/folder/list/query', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-access-token': currentToken
-        },
-        body: JSON.stringify({
-            directoryId: directoryId,
-            idList: excludeIdList
-        })
-    });
-
-    if (response.status === 401) {
-        logout();
-        throw new Error("Unauthorized");
-    }
-
-    if (!response.ok) {
-        throw new Error(`Failed to fetch folders: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return (data.folderVOList || []).map(folder => ({
-        id: String(folder.id),
-        name: folder.fileName,
-        directoryId: String(folder.directoryId ?? ''),
-        hasSubfolders: folder.empty === 'N' || folder.empty === false
-    }));
-}
-
-/**
- * List every folder in the tree with its display path (for move/copy pickers).
- * @param {string[]} excludeIdList Folder ids to omit (e.g. items being moved).
- */
-export async function fetchAllFoldersFlat(excludeIdList = []) {
-    const results = [];
-    const visited = new Set();
-
-    async function walk(directoryId, pathPrefix) {
-        const dirKey = String(directoryId);
-        if (visited.has(dirKey)) {
-            return;
-        }
-        visited.add(dirKey);
-
-        const folders = await fetchFolderList(dirKey, excludeIdList);
-        for (const folder of folders) {
-            const path = pathPrefix ? `${pathPrefix} / ${folder.name}` : folder.name;
-            results.push({ ...folder, path });
-            await walk(folder.id, path);
-        }
-    }
-
-    await walk('0', '');
-    return results.sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: 'base' }));
 }
 
 /**
