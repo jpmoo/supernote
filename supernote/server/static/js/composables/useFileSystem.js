@@ -60,7 +60,7 @@ export function useFileSystem() {
     async function moveSelectedItems(itemIds, targetDirId) {
         isLoading.value = true;
         try {
-            await moveItems(itemIds, targetDirId);
+            await moveItems(itemIds, targetDirId, currentDirectoryId.value);
             await loadDirectory();
         } catch (e) {
             console.error(e);

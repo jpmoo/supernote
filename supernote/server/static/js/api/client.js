@@ -316,11 +316,38 @@ export async function fetchFolderList(directoryId = "0", excludeIdList = []) {
 
     const data = await response.json();
     return (data.folderVOList || []).map(folder => ({
-        id: folder.id,
+        id: String(folder.id),
         name: folder.fileName,
-        directoryId: folder.directoryId,
-        hasSubfolders: folder.empty === "N" || folder.empty === false
+        directoryId: String(folder.directoryId ?? ''),
+        hasSubfolders: folder.empty === 'N' || folder.empty === false
     }));
+}
+
+/**
+ * List every folder in the tree with its display path (for move/copy pickers).
+ * @param {string[]} excludeIdList Folder ids to omit (e.g. items being moved).
+ */
+export async function fetchAllFoldersFlat(excludeIdList = []) {
+    const results = [];
+    const visited = new Set();
+
+    async function walk(directoryId, pathPrefix) {
+        const dirKey = String(directoryId);
+        if (visited.has(dirKey)) {
+            return;
+        }
+        visited.add(dirKey);
+
+        const folders = await fetchFolderList(dirKey, excludeIdList);
+        for (const folder of folders) {
+            const path = pathPrefix ? `${pathPrefix} / ${folder.name}` : folder.name;
+            results.push({ ...folder, path });
+            await walk(folder.id, path);
+        }
+    }
+
+    await walk('0', '');
+    return results.sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: 'base' }));
 }
 
 /**
@@ -378,7 +405,7 @@ export async function deleteItems(directoryId, idList) {
 /**
  * Move items to a new directory.
  */
-export async function moveItems(idList, targetDirectoryId) {
+export async function moveItems(idList, targetDirectoryId, sourceDirectoryId = '0') {
     const currentToken = getToken();
     if (!currentToken) throw new Error("Unauthorized");
 
@@ -390,7 +417,7 @@ export async function moveItems(idList, targetDirectoryId) {
         },
         body: JSON.stringify({
             idList: idList,
-            directoryId: "0", // Not strictly required for move but good for DTO compliance if needed
+            directoryId: sourceDirectoryId,
             goDirectoryId: targetDirectoryId
         })
     });

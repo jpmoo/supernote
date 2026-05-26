@@ -163,7 +163,8 @@
                 </div>
 
                 <!-- Modals -->
-                <move-modal v-if="showMoveModal" :item-ids="selectedIds" @close="showMoveModal = false"
+                <move-modal v-if="showMoveModal" :item-ids="selectedIds"
+                    :initial-directory-id="currentDirectoryId" @close="showMoveModal = false"
                     @confirm="onConfirmMove"></move-modal>
 
                 <rename-modal v-if="showRenameModal" :item="itemToRename" @close="showRenameModal = false"
