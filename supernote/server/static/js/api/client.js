@@ -285,6 +285,45 @@ export async function fetchCapacity() {
 }
 
 /**
+ * List folders under a directory (for move/copy destination picker).
+ * @param {string} directoryId Parent directory id ("0" for cloud root).
+ * @param {string[]} excludeIdList Folder ids to omit (e.g. items being moved).
+ */
+export async function fetchFolderList(directoryId = "0", excludeIdList = []) {
+    const currentToken = getToken();
+    if (!currentToken) throw new Error("Unauthorized");
+
+    const response = await fetch('/api/file/folder/list/query', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-access-token': currentToken
+        },
+        body: JSON.stringify({
+            directoryId: directoryId,
+            idList: excludeIdList
+        })
+    });
+
+    if (response.status === 401) {
+        logout();
+        throw new Error("Unauthorized");
+    }
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch folders: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return (data.folderVOList || []).map(folder => ({
+        id: folder.id,
+        name: folder.fileName,
+        directoryId: folder.directoryId,
+        hasSubfolders: folder.empty === "N" || folder.empty === false
+    }));
+}
+
+/**
  * Create a new folder.
  */
 export async function createFolder(directoryId, folderName) {
