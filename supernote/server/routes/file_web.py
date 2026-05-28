@@ -49,6 +49,7 @@ from supernote.server.services.file import (
     FolderDetail,
     RecycleEntity,
 )
+from supernote.server.utils.request_url import public_base_url
 
 logger = logging.getLogger(__name__)
 routes = web.RouteTableDef()
@@ -557,7 +558,7 @@ async def handle_file_upload_apply(request: web.Request) -> web.Response:
         encoded_name = urllib.parse.quote(inner_name)
         path_to_sign = f"/api/oss/upload?path={encoded_name}"
         signed_path = await url_signer.sign(path_to_sign, user=request["user"])
-        full_url = f"{request.scheme}://{request.host}{signed_path}"
+        full_url = f"{public_base_url(request)}{signed_path}"
 
         return web.json_response(
             FileUploadApplyLocalVO(

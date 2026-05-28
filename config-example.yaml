@@ -7,6 +7,11 @@
 host: 0.0.0.0
 port: 8080
 
+# Public URL clients use to reach this server (recommended behind nginx/Caddy).
+# Example: https://supernote.example.com
+# Env: SUPERNOTE_BASE_URL
+# base_url: https://supernote.example.com
+
 # Directory where uploaded files and databases will be stored.
 storage_dir: storage
 

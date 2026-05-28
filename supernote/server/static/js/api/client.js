@@ -448,33 +448,79 @@ async function uploadFinish(directoryId, fileName, size, md5, innerName) {
 }
 
 /**
+ * Use a same-origin path for OSS upload so the browser does not call an internal
+ * host returned by the server (common behind reverse proxies).
+ */
+function sameOriginUploadUrl(fullUploadUrl) {
+    if (!fullUploadUrl) {
+        throw new Error('Upload apply did not return an upload URL');
+    }
+    if (fullUploadUrl.startsWith('/')) {
+        return fullUploadUrl;
+    }
+    try {
+        const parsed = new URL(fullUploadUrl, window.location.origin);
+        if (parsed.origin !== window.location.origin) {
+            throw new Error(
+                `Upload URL origin (${parsed.origin}) does not match this site (${window.location.origin}). ` +
+                'Set SUPERNOTE_BASE_URL to your public URL and SUPERNOTE_PROXY_MODE=relaxed (or strict) on the server.'
+            );
+        }
+        return parsed.pathname + parsed.search;
+    } catch (e) {
+        if (e instanceof Error && e.message.includes('does not match')) {
+            throw e;
+        }
+        return fullUploadUrl;
+    }
+}
+
+/**
  * Upload a file (orchestrates apply, put, and finish).
  */
 export async function uploadFile(directoryId, file, onProgress) {
-    // 1. Calculate MD5 (optional but good for finish)
-    const md5 = await calculateFileMd5(file);
+    let md5;
+    try {
+        md5 = await calculateFileMd5(file);
+    } catch (e) {
+        throw new Error(`Could not read file for upload: ${e.message || e}`);
+    }
 
-    // 2. Apply
-    const applyData = await uploadApply(directoryId, file.name, file.size, md5);
+    let applyData;
+    try {
+        applyData = await uploadApply(directoryId, file.name, file.size, md5);
+    } catch (e) {
+        throw new Error(`Upload apply failed: ${e.message || e}`);
+    }
+
     const { fullUploadUrl, innerName } = applyData;
+    const uploadUrl = sameOriginUploadUrl(fullUploadUrl);
 
-    // 3. POST/PUT file to blob storage as multipart
-    // We use FormData to ensure the server receives a multipart request.
     const formData = new FormData();
     formData.append('file', file);
 
-    const uploadResp = await fetch(fullUploadUrl, {
-        method: 'POST', // Both POST and PUT are supported by our oss.py handle_oss_upload
-        body: formData,
-        // Note: Do NOT set Content-Type header; fetch will set it with the correct boundary
-    });
-
-    if (!uploadResp.ok) {
-        throw new Error(`File binary upload failed: ${uploadResp.statusText}`);
+    let uploadResp;
+    try {
+        uploadResp = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formData,
+        });
+    } catch (e) {
+        const hint = e.message === 'Failed to fetch'
+            ? ' (network/CORS — ensure the server is reachable at this URL)'
+            : '';
+        throw new Error(`File upload to storage failed${hint}: ${e.message || e}`);
     }
 
-    // 4. Finish
-    return await uploadFinish(directoryId, file.name, file.size, md5, innerName);
+    if (!uploadResp.ok) {
+        throw new Error(`File binary upload failed: ${uploadResp.status} ${uploadResp.statusText}`);
+    }
+
+    try {
+        return await uploadFinish(directoryId, file.name, file.size, md5, innerName);
+    } catch (e) {
+        throw new Error(`Upload finish failed: ${e.message || e}`);
+    }
 }
 
 /**
