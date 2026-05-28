@@ -1,11 +1,11 @@
 import { createApp, ref, onMounted, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
-import { useFileSystem } from './composables/useFileSystem.js?v=7';
-import { setToken, getToken, login, logout, fetchProcessingStatus } from './api/client.js?v=7';
+import { useFileSystem } from './composables/useFileSystem.js?v=8';
+import { setToken, getToken, login, logout, fetchProcessingStatus } from './api/client.js?v=8';
 import FileCard from './components/FileCard.js';
 import LoginCard from './components/LoginCard.js';
-import FileViewer from './components/FileViewer.js';
+import FileViewer from './components/FileViewer.js?v=8';
 import SystemPanel from './components/SystemPanel.js';
-import MoveModal from './components/MoveModal.js?v=7';
+import MoveModal from './components/MoveModal.js?v=8';
 import RenameModal from './components/RenameModal.js';
 
 createApp({

@@ -448,18 +448,17 @@ async function uploadFinish(directoryId, fileName, size, md5, innerName) {
 }
 
 /**
- * Use a same-origin path for OSS upload so the browser does not call an internal
- * host returned by the server (common behind reverse proxies).
+ * Resolve a server-returned URL to a path the browser can fetch on this site.
  */
-function sameOriginUploadUrl(fullUploadUrl) {
-    if (!fullUploadUrl) {
-        throw new Error('Upload apply did not return an upload URL');
+export function resolveSameOriginUrl(url) {
+    if (!url) {
+        throw new Error('Missing URL');
     }
-    if (fullUploadUrl.startsWith('/')) {
-        return fullUploadUrl;
+    if (url.startsWith('/')) {
+        return url;
     }
     try {
-        const parsed = new URL(fullUploadUrl, window.location.origin);
+        const parsed = new URL(url, window.location.origin);
         // Same host: use a relative path so the page scheme (e.g. https) is used even
         // when the server returned http behind a TLS-terminating proxy.
         if (parsed.host === window.location.host) {
@@ -476,8 +475,26 @@ function sameOriginUploadUrl(fullUploadUrl) {
         if (e instanceof Error && e.message.includes('does not match')) {
             throw e;
         }
-        return fullUploadUrl;
+        return url;
     }
+}
+
+/** @param {string} fileId */
+export async function fetchFileText(fileId, maxBytes = 512 * 1024) {
+    const url = resolveSameOriginUrl(await getFileDownloadUrl(fileId));
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    }
+    const lengthHeader = response.headers.get('content-length');
+    if (lengthHeader && Number(lengthHeader) > maxBytes) {
+        throw new Error(`File is too large to preview (${lengthHeader} bytes).`);
+    }
+    const blob = await response.blob();
+    if (blob.size > maxBytes) {
+        throw new Error(`File is too large to preview (${blob.size} bytes).`);
+    }
+    return blob.text();
 }
 
 /**
@@ -499,7 +516,7 @@ export async function uploadFile(directoryId, file, onProgress) {
     }
 
     const { fullUploadUrl, innerName } = applyData;
-    const uploadUrl = sameOriginUploadUrl(fullUploadUrl);
+    const uploadUrl = resolveSameOriginUrl(fullUploadUrl);
 
     const formData = new FormData();
     formData.append('file', file);

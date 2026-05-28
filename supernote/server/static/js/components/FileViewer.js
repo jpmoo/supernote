@@ -1,9 +1,13 @@
-import { ref, watch, onMounted } from 'vue';
-import { convertNoteToPng, getFileDownloadUrl } from '../api/client.js';
+import { ref, watch, onMounted, computed } from 'vue';
+import { convertNoteToPng, getFileDownloadUrl, fetchFileText, resolveSameOriginUrl } from '../api/client.js?v=8';
 import SummaryPanel from './SummaryPanel.js';
 
 const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
 const PDF_EXTS = ['pdf'];
+const TEXT_EXTS = [
+    'txt', 'text', 'md', 'markdown', 'json', 'csv', 'log', 'xml',
+    'yaml', 'yml', 'html', 'htm', 'css', 'js', 'ts', 'py', 'sh'
+];
 
 function getExt(name) {
     if (!name) return '';
@@ -28,7 +32,22 @@ export default {
         const error = ref(null);
         const showDetails = ref(false);
         const directUrl = ref(null);     // for images / PDFs
-        const directKind = ref(null);    // 'image' | 'pdf'
+        const directKind = ref(null);    // 'image' | 'pdf' | 'text'
+        const textContent = ref('');
+
+        const subtitle = computed(() => {
+            if (directKind.value === 'text') {
+                const lines = textContent.value ? textContent.value.split('\n').length : 0;
+                return `${lines} lines`;
+            }
+            if (pages.value.length > 0) {
+                return `${pages.value.length} pages`;
+            }
+            if (directKind.value === 'image' || directKind.value === 'pdf') {
+                return 'Document';
+            }
+            return '';
+        });
 
         const loadPages = async () => {
             if (!props.file) return;
@@ -38,6 +57,7 @@ export default {
             pages.value = [];
             directUrl.value = null;
             directKind.value = null;
+            textContent.value = '';
 
             const ext = getExt(props.file.name);
 
@@ -50,17 +70,20 @@ export default {
                         error.value = "No pages found. The note might still be processing.";
                     }
                 } else if (IMAGE_EXTS.includes(ext)) {
-                    directUrl.value = await getFileDownloadUrl(props.file.id);
+                    directUrl.value = resolveSameOriginUrl(await getFileDownloadUrl(props.file.id));
                     directKind.value = 'image';
                 } else if (PDF_EXTS.includes(ext)) {
-                    directUrl.value = await getFileDownloadUrl(props.file.id);
+                    directUrl.value = resolveSameOriginUrl(await getFileDownloadUrl(props.file.id));
                     directKind.value = 'pdf';
+                } else if (TEXT_EXTS.includes(ext)) {
+                    textContent.value = await fetchFileText(props.file.id);
+                    directKind.value = 'text';
                 } else {
                     error.value = "Preview not available for this file type.";
                 }
             } catch (e) {
                 console.error(e);
-                error.value = "Failed to load preview.";
+                error.value = e.message || "Failed to load preview.";
             } finally {
                 isLoading.value = false;
             }
@@ -75,7 +98,9 @@ export default {
             error,
             showDetails,
             directUrl,
-            directKind
+            directKind,
+            textContent,
+            subtitle
         };
     },
     template: `
@@ -88,7 +113,7 @@ export default {
                 </div>
                 <div>
                     <h2 class="text-lg font-bold text-slate-800">{{ file.name }}</h2>
-                    <p class="text-xs text-slate-500">{{ pages.length }} Pages</p>
+                    <p v-if="subtitle" class="text-xs text-slate-500">{{ subtitle }}</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -122,7 +147,7 @@ export default {
                     <!-- Loading State -->
                     <div v-if="isLoading" class="flex flex-col items-center justify-center p-20 bg-white rounded-xl shadow-sm">
                         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
-                        <p class="text-slate-500 animate-pulse">Converting note...</p>
+                        <p class="text-slate-500 animate-pulse">Loading preview...</p>
                     </div>
 
                     <!-- Pages List (for .note files) -->
@@ -143,6 +168,11 @@ export default {
                     <!-- Direct PDF preview -->
                     <div v-if="!isLoading && !error && directKind === 'pdf'" class="bg-white rounded-xl shadow-md overflow-hidden" style="height: 80vh;">
                         <iframe :src="directUrl" class="w-full h-full border-0" :title="file.name"></iframe>
+                    </div>
+
+                    <!-- Text preview -->
+                    <div v-if="!isLoading && !error && directKind === 'text'" class="bg-white rounded-xl shadow-md overflow-hidden">
+                        <pre class="p-6 text-sm text-slate-800 font-mono whitespace-pre-wrap break-words overflow-x-auto">{{ textContent }}</pre>
                     </div>
                 </div>
             </div>
