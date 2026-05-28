@@ -1,5 +1,5 @@
 import { ref } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
-import { fetchFiles, createFolder, deleteItems, moveItems, renameItem, uploadFile } from '../api/client.js?v=6';
+import { fetchFiles, createFolder, deleteItems, moveItems, renameItem, uploadFile } from '../api/client.js?v=7';
 
 export function useFileSystem() {
     const files = ref([]);

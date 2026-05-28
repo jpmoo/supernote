@@ -460,9 +460,14 @@ function sameOriginUploadUrl(fullUploadUrl) {
     }
     try {
         const parsed = new URL(fullUploadUrl, window.location.origin);
+        // Same host: use a relative path so the page scheme (e.g. https) is used even
+        // when the server returned http behind a TLS-terminating proxy.
+        if (parsed.host === window.location.host) {
+            return parsed.pathname + parsed.search;
+        }
         if (parsed.origin !== window.location.origin) {
             throw new Error(
-                `Upload URL origin (${parsed.origin}) does not match this site (${window.location.origin}). ` +
+                `Upload URL host (${parsed.host}) does not match this site (${window.location.host}). ` +
                 'Set SUPERNOTE_BASE_URL to your public URL and SUPERNOTE_PROXY_MODE=relaxed (or strict) on the server.'
             );
         }
